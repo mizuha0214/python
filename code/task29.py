@@ -31,8 +31,21 @@ found = {name: batches for name in order
          if (batches:= get_batches(stock.get(name, 0), 8))}
 print(found)
 #これだめ
-found = {name: (tenth := count//10)
-         for name, count in stock.items() if tenth>10 }
+# found = {name: (tenth := count//10)
+#          for name, count in stock.items() if tenth>10 }
 
+found = {name: tenth for name, count in stock.items()
+if (tenth := count//10) > 0}
 
+found = [(name, (tenth := count // 2))
+         for name, count in stock.items() if tenth > 10]
+print(found)
 
+half = [(squared := last**2) for count in stock.values() if (last := count//2) > 10]
+print(f"Last item of {half} is {last}**2 = {squared}")# Last item of [3844, 289, 144] is 12**2 = 144
+
+for count in stock.values():
+    last = count//2
+    squared = last**2
+print(f"{count}//2 = {last}; {last}**2 = {squared}")# Last item of [3844, 289, 144] is 12**2 = 144
+# 24//2 = 12; 12**2 = 144

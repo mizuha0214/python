@@ -17,6 +17,23 @@ def animate():
     for delta in move(2, 3.0):
         yield delta
 
-#スクリーンで動かす
 def render(delta):
-    
+    #スクリーンで動かす
+    print(delta)
+
+def run(func):
+    for delta in func():
+        render(delta)
+
+# run(animate)
+
+#yield fromで簡潔に。
+
+def animate_composed():
+    yield from move(4, 5.0) 
+    yield from pause(3)
+    yield from move(2, 3.0)
+
+# run(animate_composed)
+it = animate_composed()
+print(next(it))

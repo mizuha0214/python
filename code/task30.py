@@ -53,3 +53,5 @@ with open("speech.txt") as f:
     it = index_file(f)
     results = itertools.islice(it, 0, 10) #最初の10個
     print(list(results))
+
+print(type(it), type(itertools.islice(it, 0, 10)))

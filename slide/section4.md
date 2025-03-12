@@ -20,10 +20,6 @@ Pythonのベストプラクティスを90項目も紹介した本。
 ---
 
 # 4章　内包表記とジェネレータ
-##setumei
-
----
-
 対象：リストや辞書など、集合体
 ・読みやすいように簡潔に書く
 ・メモリ効率を高める
@@ -79,13 +75,14 @@ squares = list(squares_iterator) #非推奨。lambdaとfilterが煩わしい。
 
 ---
 
-辞書にも内包表記あり
+辞書と集合にも内包表記あり
 リスト同様に、
 ×　for文、map(+filter)
-○　辞書内包表記推奨
+○　辞書内包表記, 集合内包表記
 
 ```python
 even_squares_dict = {x: x**2 for x in numbers if x%2 == 0}　#推奨。簡潔。
+even_squares_set = {x**2 for x in numbers if x%2 == 0} #推奨。簡潔。
 ```
 
 ---
@@ -163,7 +160,7 @@ def get_batches(count: int, size: int):　
 ```
 
 ---
-for文で書くと、
+for文で書くと...
 ```python
 found = {}
 for name in order:
@@ -172,14 +169,344 @@ for name in order:
     if batches:
         result[name] = batches
 ```
-辞書内包表記を使うと、
-Good:　簡潔。
-Bad: 全く同じ```get_batches(stock.get(name, 0), 8)```が2個あり、変更に弱い。
+&nbsp;
+辞書内包表記を使うと...
+良い点:　簡潔。
+悪い点:　```get_batches(stock.get(name, 0), 8)```が2個あり、変更に弱い。
 ```python
 found = {name: get_batches(stock.get(name, 0), 8)
          for name in order
          if get_batches(stock.get(name, 0), 8)}
 ```
+
+---
+
+- 解決方法：ウォオラス演算子(:=)を使う。（項目10: 代入式で繰り返しを防ぐ）
+```python
+found = {name: batches for name in order
+         if (batches:= get_batches(stock.get(name, 0), 8))}
+```
+- 注意１：代入式は条件部分で使用
+```python
+found = {name: (tenth := count//10)　#NameError: name 'tenth' is not undefined
+         for name, count in stock.items() if tenth>10 }
+```
+```python
+found = {name: tenth for name, count in stock.items() #大丈夫
+if (tenth := count//10) > 0}
+```
+---
+
+
+- 注意２：ウォオラス演算子の有無で、変数スコープが変わる
+```python
+half = [(squared := last**2) for count in stock.values() if (last := count//2) > 10]
+print(f"Last item of {half} is {last}**2 = {squared}")
+# Last item of [3844, 289, 144] is 12**2 = 144 #参照できる
+```
+```python
+for count in stock.values():
+    last = count//2
+    squared = last**2
+print(f"{count}//2 = {last}; {last}**2 = {squared}")
+# 24//2 = 12; 12**2 = 144　#参照できる
+```
+```python
+half = [count//2 for count in stock.values()]
+print(count) #エラー
+```
+
+---
+
+## 項目30　リストを返さずにジェネレータを返すことを考える
+結果をシーケンスで返したいとき、まず思いつくのはリスト
+
+```python
+#文字列中の単語のインデックスを求める
+def index_words(text):
+    result = []
+    if text:
+        result.append(0)
+    for index, letter in enumerate(text):
+        if letter == ' ':
+            result.append(index+1)
+    return result
+```
+**問題点**
+- ```append```が煩わしい。```index+1```より```append```が目立っている。
+- 入力文字列が膨大だと、メモリを食いつぶしかねない。
+
+---
+
+解決方法/ ジェネレータ関数を使う
+
+```python
+def index_words_iter(text):
+    if text:
+        yield 0
+        yield 0
+    for index, letter in enumerate(text):
+        if letter == " ":
+            yield index+1
+```
+- ジェネレータ関数（後スライドで再び説明）
+  - 呼び出された時点では何も実行されないが、イテレータを返す。
+  - nextを呼び出すと、イテレータがジェネレータ関数を次の```yield```まで進ませる。
+
+```python
+it = index_words_iter(speech)#イテレータを返す
+print(next(it)) #5
+print(next(it)) #8
+result = list(itertools.islice(it, 0, 10))#リストに変換できる
+```
+
+---
+
+## 項目31　引数に対してイテレータを使うときには確実さを優先する
+
+```python
+def normalize(numbers):#各都市への旅行者数は、全世界の旅行者数の何％か。
+    total = sum(numbers) #全世界の旅行者数
+    result = []
+    for value in numbers:
+        percent = 100*value/total
+        result.append(percent)
+    return result
+
+def read_visits(data_path):#data_pathは、１行に１都市の旅行者数
+    with open(data_path) as f:
+        for line in f:
+            yield int(line)
+
+it = read_visits("my_numbers.txt")
+percentages = normalize(it)
+print(percentages) #[5.2, 0.4, 1.5, 3.4, 1.8,..]を期待していたが、[]　どうしてか？
+```
+
+---
+
+イテレータは一回最後まで行くと終了。反復処理はできない。
+- 全スライドのコードの問題点
+```python
+def normalize(numbers)
+    total = sum(numbers) #イテレータが最後まで進む。
+    result = []
+    for value in numbers:　#もう最後まで行ったのでループできる要素なし。
+        percent = 100*value/total
+        result.append(percent)
+    return resul
+```
+- 解決方法1：イテレータをリストに変換
+  - 問題点：メモリ効率を高めるというイテレータの利点が消える
+```python
+def normalize_copy(numbers):
+    numbers = list(numbers) #この行を追加
+    total = sum(numbers)
+    以下略
+```
+
+---
+
+- 解決方法2：イテレータ自身ではなく、新たなイテレータを返す関数を引数にする
+  - 問題点：lambda関数が煩わしい
+```python
+def normalize_func(get_iter):
+    total = sum(get_iter())
+    result = []
+    for value in get_iter():
+        percent = 100*value/total
+        result.append(percent)
+    return result
+
+path = "my_numbers.txt"
+percentages = normalize_func(lambda: read_visits(path))
+```
+
+---
+
+- 解決方法3：イテレータを提供するクラスを実装
+**イテレータとは？**
+  - ```for x in foo```では、まず```foo```をイテレータに変換。
+  - イテレータに変換できるものをイテラブルという。イテレータは```__iter__```と```__next__```を持ち、イテラブルは```__iter__```のみ持つ。 イテレータもイテラブル。
+
+```python
+class Counter: #イテレータ(インスタンス)を生成するクラス
+    def __init__(self, start, end):
+        self.current = start
+        self.end = end
+    def __iter__(self):
+        return self  # 自分自身をイテレータとして返す
+    def __next__(self):
+        if self.current >= self.end:
+            raise StopIteration  # 終了
+        value = self.current
+        self.current += 1
+        return value
+```
+
+---
+
+- 解決方法3：イテレータを提供するクラスを実装
+**では、ジェネレータ関数とは？** イテレータを作るための関数。
+全スライドのようなイテレータを自分で実装すると...
+  - ```__init__()```、```__iter__()```、```__next__()``` を全部書く
+  - 状態 (```self.current```) を管理
+  - ```StopIteration``` を扱う
+   
+  一方、ジェネレータ関数なら簡潔
+```python
+def counter(start, end):
+    current = start
+    while current < end:
+        yield current  
+        current += 1 
+``` 
+
+---
+
+- 解決方法3：イテレータを提供するクラスを実装
+全世界の旅行者数の話に戻ります。
+```python
+class ReadVisits: #イテラブル(インスタンス)を生成するクラス
+    def __init__(self, data_path):
+        self.data_path = data_path
+
+    def __iter__(self): #ジェネレータ関数。イテレータを返す。
+        with open(self.data_path) as f:
+            for line in f:
+                yield int(line)
+```
+
+```python
+path = "my_numbers.txt"
+visits = ReadVisits(path)
+percentages = normalize(visits) #sum関数、forループでそれぞれ（別の）イテレータが返される。
+print(percentages)
+```
+---
+
+また、イテレータが引数になっていないか、確認すると安心。
+イテレータに```__iter__()```を使うと、自身を返すことを利用。
+```python
+def normalize_defensive(numbers):
+    if iter(numbers) is numbers: 
+        raise TypeError("Must supply a container.")
+    total = sum(numbers)
+    result = []
+    for value in numbers:
+        percent = 100*value/total
+        result.append(percent)
+    return result
+```
+```isinstance(numbers, collections.abc.Iterator)```を使ってもよい。
+
+---
+
+## 項目32　大きなリスト内包表記にはジェネレータ式を考える
+
+リスト内包表記
+良い点：簡潔
+悪い点：入力データが膨大だと危険
+
+```python
+value = [len(x) for x in open("my_numbers.txt")]
+print(value) #[100, 57, 18, 3, 45, 98, 30, 2, 33]
+```
+
+そこで、ジェネレータ式（リスト内表表記＋ジェネレータ関数）
+```python
+it = (len(x) for x in open("my_numbers.txt"))
+print(next(it)) #100
+print(next(it)) #57
+```
+
+---
+
+さらに、ジェネレータ式を組み合わせることが可能
+```python
+it = (len(x) for x in open("my_numbers.txt"))
+roots = (x**0.5 for x in it)
+```
+値1個ずつ、open() → len() → **0.5 が 連鎖的に処理されるため高速で、ストリーム処理に最適
+
+---
+
+## 項目33　yield fromで複数のジェネレータを作る
+```python
+#ジェネレータを使い、イメージの動きをアニメーションで示す。
+#視覚効果を狙って、最初は速く動き、少し止まって、それからゆっくり動く。
+
+def move(period, speed): #動く
+    for _ in range(period):
+        yield speed
+
+def pause(delay): #止まる
+    for _ in range(delay):
+        yield 0
+
+def animate(): #一連の動き
+    for delta in move(4, 5.0):
+        yield delta
+    for delta in pause(3):
+        yield delta
+    for delta in move(2, 3.0):
+        yield delta
+
+def render(delta):
+    #スクリーンで動かす
+    ...
+
+def run(func):
+    for delta in func():
+        render(delta)
+
+run(animate)
+```
+
+---
+
+yield fromを使うと...
+```python
+def animate_composed():
+    yield from move(4, 5.0) 
+    yield from pause(3)
+    yield from move(2, 3.0)
+```
+- 簡潔
+- 処理速度が速い
+```move```, ```pause```でyieldされた値は、animate_composed()のyieldには渡らずに、直接外に出る。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
