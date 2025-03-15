@@ -330,7 +330,7 @@ percentages = normalize_func(lambda: read_visits(path))
   - イテレータに変換できるものをイテラブルという。イテレータは```__iter__```と```__next__```を持ち、イテラブルは```__iter__```のみ持つ。 イテレータもイテラブル。
 
 ```python
-class Counter: #イテレータ(インスタンス)を生成するクラス
+class Counter: #イテレータクラス
     def __init__(self, start, end):
         self.current = start
         self.end = end
@@ -346,7 +346,7 @@ class Counter: #イテレータ(インスタンス)を生成するクラス
 
 ---
 
-- 解決方法3：イテレータを提供するクラスを実装
+- 解決方法3：イテレータクラスを実装
 **では、ジェネレータ関数とは？** イテレータを作るための関数。
 全スライドのようなイテレータを自分で実装すると...
   - ```__init__()```、```__iter__()```、```__next__()``` を全部書く
@@ -367,7 +367,7 @@ def counter(start, end):
 - 解決方法3：イテレータを提供するクラスを実装
 全世界の旅行者数の話に戻ります。
 ```python
-class ReadVisits: #イテラブル(インスタンス)を生成するクラス
+class ReadVisits: #イテラブルクラス
     def __init__(self, data_path):
         self.data_path = data_path
 
@@ -475,6 +475,135 @@ def animate_composed():
 - 簡潔
 - 処理速度が速い
 ```move```, ```pause```でyieldされた値は、animate_composed()のyieldには渡らずに、直接外に出る。
+
+---
+
+---
+
+```python
+def wave_modulating(steps):
+    step_size = 2 * math.pi / steps
+    amplitude = yield
+    for step in range(steps):
+        radians = step * step_size
+        fraction = math.sin(radians)
+        output = amplitude * fraction
+        amplitude = yield output
+
+def transmit(output):
+    if output is None:
+        print(f"output is None")
+    else:
+        print(f"Output: {output:>5.1f}")
+
+def run_modulating(it):
+    amplitudes = [None, 7, 7, 7, 2, 2, 2, 2, 10, 10, 10, 10, 10]
+
+    for amplitude in amplitudes:
+        output = it.send(amplitude)
+        transmit(output)
+```
+
+---
+
+```python
+def complex_wave_modulating():
+    yield from wave_modulating(3)
+    yield from wave_modulating(4)
+    yield from wave_modulating(5)
+```
+```python
+def wave_cascading(amplitude_it, steps):
+    step_size = 2 * math.pi / steps
+    for step in range(steps):
+        radians = step * step_size
+        fraction = math.sin(radians)
+        amplitude = next(amplitude_it)
+        output = amplitude * fraction
+        yield output
+```
+
+---
+
+```python
+#イテラブルクラスにすれば解決 ##なんでイテラブル？イテレータクラスではだめなのか
+class Timer:
+    def __init__(self, period):
+        self.current = period
+        self.period = period
+    
+    def reset(self):
+        self.current = self.period
+
+    def __iter__(self):
+        while self.current:
+            self.current -= 1
+            yield self.current
+
+def run():
+    timer = Timer(4)
+    for current in timer:
+        if check_for_reset():
+            timer.reset()
+        announce(current)
+```
+- つなげる
+- ふるい分ける
+- 組み合わせる
+```python
+import itertools
+```
+
+---
+
+**つなげる**
+- chain
+```python
+it = itertools.chain([1, 2, 3], [4, 5, 6])
+prit(list(it)) #[1, 2, 3, 4, 5, 6]
+```
+??リストの足し合わせと何が違うのか?
+
+- repeat
+```python
+it = itertools.repeat("hello", 3)
+print(list(it))
+```
+
+- cycle
+```python
+it = itertools.cycle([1, 2])
+result = [next(it) for _ in range(10)]
+print(result) #[1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
+#なんでlistにそのまま変換しないんだろう
+```
+
+--- 
+
+```python
+- tee
+it1, it2, it3 = itertools.tee(["first", "second"], 3)
+print(["first", "second"])
+print(["first", "second"])
+print(["first", "second"])
+```
+
+- zip_longest
+```python
+keys = ["one", "two", "three"]
+values = [1, 2]
+normal = list(zip(keys, values))
+print(normal) #[("one", 1), ("two", 2)]
+it = itertools.zip_longest(keys, values, fillvalue="nope")
+longest = list(it)
+print(longest)#[("one", 1), ("two", 2), ("three", "Nope")]
+```
+
+---
+
+**ふるい分ける**
+- islice
+```pytho
 
 
 
