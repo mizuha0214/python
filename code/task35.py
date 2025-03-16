@@ -1,3 +1,25 @@
+class MyError(Exception):
+    pass
+
+def my_generator():
+    yield 1
+    print("after yield 1")
+    print("after yield 1")
+    print("after yield 1")
+    yield 2
+    print("after yield 2")
+    print("after yield 2")
+    print("after yield 2")
+    yield 3
+
+it = my_generator()
+print(next(it)) #1
+# print(next(it)) #2
+# print(it.throw(MyError("test error"))) #Traceback... MyError: test error
+# print(next(it))
+
+
+
 class Reset(Exception):
     pass
 
@@ -12,6 +34,7 @@ def timer(period):
 
 def check_for_reset():
    #外部イベントをポーリングして待つ
+   pass
 
 def announce(remaining):
     print(f"{remaining} ticks remaining")

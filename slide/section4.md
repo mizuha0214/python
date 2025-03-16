@@ -478,12 +478,17 @@ def animate_composed():
 
 ---
 
+## 項目34　sendでジェネレータにデータを注入するのは避ける
+```send```を使えば、```yield```で値を受け取る
+（＋```yield```で値を返す(```next```)の動作も伴う）
+
 ---
 
+```send```を使って、振幅が変化する波を作れる　
 ```python
 def wave_modulating(steps):
     step_size = 2 * math.pi / steps
-    amplitude = yield
+    amplitude = yield 
     for step in range(steps):
         radians = step * step_size
         fraction = math.sin(radians)
@@ -502,16 +507,39 @@ def run_modulating(it):
     for amplitude in amplitudes:
         output = it.send(amplitude)
         transmit(output)
+
+run_modulating(wave_modulating(12))
 ```
 
 ---
 
+しかし、yield fromを使うと予期しない出力（次スライドに出力）
 ```python
 def complex_wave_modulating():
     yield from wave_modulating(3)
     yield from wave_modulating(4)
     yield from wave_modulating(5)
+
+run_modulating(complex_wave_modulating())
 ```
+```python
+>>>#実際の出力           >>>#期待する出力
+Output is None          Output is None
+Output: 0.0             Output: 0.0
+Output: 0.0             Output: 0.0
+Output: 0.0             Output: 0.0
+Output is None          Output: 0.0 
+Output: 0.0             Output: 0.0
+Output: 0.0             Output: 0.0 
+Output: 0.0             Output: 0.0
+Output is None          Output: 0.0
+Output: 0.0             Output: 0.0
+...                     ...
+```
+
+---
+
+解決方法：ラジオ波の関数にイテレータを渡す
 ```python
 def wave_cascading(amplitude_it, steps):
     step_size = 2 * math.pi / steps
@@ -522,11 +550,77 @@ def wave_cascading(amplitude_it, steps):
         output = amplitude * fraction
         yield output
 ```
+？？ここで、最もいいのはイテレータはどこからでもよく、完全に動的であること
 
 ---
 
+## 項目34　ジェネレータでthrowによる状態遷移を起こすのは避ける
+
+ジェネレータの機能
+- yield from
+- sendメソッド
+- **throwメソッド**
+
+throwメソッドとは？
+throwが呼び出されると、ジェネレータは通常のように実行を続けず、代わりに例外を発生させる。
 ```python
-#イテラブルクラスにすれば解決 ##なんでイテラブル？イテレータクラスではだめなのか
+class MyError(Exception):
+    pass
+
+def my_generator():
+    yield 1
+    yield 2
+    yield 3
+
+it = my_generator()
+print(next(it)) #1
+print(next(it)) #2
+print(it.throw(MyError("test error"))) #Traceback... MyError: test error
+print(next(it))
+```
+
+---
+
+問題点：throwを使うとコードが複雑になる
+なぜ、より本質的にはなにがいけなかったんだろう？なんでイテラブルクラスにしたらコードが短縮された？
+非同期機能を。。？
+```python
+class Reset(Exception):
+    pass
+
+def timer(period):
+    current = period
+    while current:
+        current -= 1
+        try:
+            yield current
+        except Reset:
+            current = period
+
+def check_for_reset():
+   #外部イベントをポーリングして待つ
+
+def announce(remaining):
+    print(f"{remaining} ticks remaining")
+
+def run():
+    it = timer(4)
+    while True:
+        try:
+            if check_for_reset():
+                current = it.throw(Reset())
+            else:
+                current = next(it)
+        except StopIteration:
+            break
+        else:
+            announce(current)
+```
+
+---
+
+- 解決方法：イテラブルクラスを実装 ##なんでイテラブル？イテレータクラスではだめなのか
+```python
 class Timer:
     def __init__(self, period):
         self.current = period
