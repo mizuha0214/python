@@ -654,9 +654,11 @@ import itertools
 - chain
 ```python
 it = itertools.chain([1, 2, 3], [4, 5, 6])
-prit(list(it)) #[1, 2, 3, 4, 5, 6]
+print(list(it)) #[1, 2, 3, 4, 5, 6] 
+
+#よりchainが適した例
+it = itertools.chain(range(10**7), range(10**7))
 ```
-??リストの足し合わせと何が違うのか?
 
 - repeat
 ```python
@@ -669,25 +671,28 @@ print(list(it))
 it = itertools.cycle([1, 2])
 result = [next(it) for _ in range(10)]
 print(result) #[1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
-#なんでlistにそのまま変換しないんだろう
 ```
 
 --- 
 
+- tee：複数のイテレータを作成
 ```python
-- tee
+#it1, it2, it3は別々のイテレータ
+# 最初に進んだイテレータがデータ取得して他のイテレータのためにキャッシュ
 it1, it2, it3 = itertools.tee(["first", "second"], 3)
 print(["first", "second"])
 print(["first", "second"])
 print(["first", "second"])
 ```
 
-- zip_longest
+- zip_longest：短いほうのイテレータが終了したら指定値で埋める
 ```python
 keys = ["one", "two", "three"]
 values = [1, 2]
+
 normal = list(zip(keys, values))
 print(normal) #[("one", 1), ("two", 2)]
+
 it = itertools.zip_longest(keys, values, fillvalue="nope")
 longest = list(it)
 print(longest)#[("one", 1), ("two", 2), ("three", "Nope")]
@@ -696,9 +701,15 @@ print(longest)#[("one", 1), ("two", 2), ("three", "Nope")]
 ---
 
 **ふるい分ける**
-- islice
-```pytho
-
+- islice リストのスライスと同様
+- takewhile
+関数が False を返すまで、イテラブルから要素を順に取得
+filterは全要素をチェックするが、takewhileは途中で断ち切る
+- dropwhile
+takewhileの反対で、関数がFalseを返すまで要素をスキップ
+- filterfalse
+filterの逆で、関数がfalseになる要素を返す
+filterと処理速度の違いはないが、fiiler + notより読みやすい
 
 
 

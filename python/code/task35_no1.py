@@ -3,20 +3,25 @@ class MyError(Exception):
 
 def my_generator():
     yield 1
-    print("after yield 1")
-    print("after yield 1")
-    print("after yield 1")
     yield 2
-    print("after yield 2")
-    print("after yield 2")
-    print("after yield 2")
     yield 3
 
 it = my_generator()
-print(next(it)) #1
-# print(next(it)) #2
-# print(it.throw(MyError("test error"))) #Traceback... MyError: test error
-# print(next(it))
+print(next(it))
+print(next(it))
+print(it.throw(MyError("test error")))
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
